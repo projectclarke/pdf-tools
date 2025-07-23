@@ -250,7 +250,7 @@
     document.body.appendChild(btn);
   };
 
-  createButton('📸 Capture All Deals', -40, async () => {
+  createButton('📸 Capture All Deals', -60, async () => {
     const pages = getAllPages(), allDeals = [];
     for (const page of pages) {
       page.scrollIntoView({ behavior: 'instant', block: 'center' });
@@ -262,7 +262,7 @@
     await runCapture(allDeals);
   }, '#007bff');
 
-  createButton('📸 Select Deals to Capture', 20, async () => {
+  createButton('📸 Select Deals to Capture', 0, async () => {
     const pages = getAllPages(), allDeals = [];
     for (const page of pages) {
       page.scrollIntoView({ behavior: 'instant', block: 'center' });
@@ -274,7 +274,7 @@
     await showSelector(allDeals, true);
   }, '#6f42c1');
 
-  createButton('📋 Select Deals (No Thumbnails)', 80, async () => {
+  createButton('📋 Select Deals (No Thumbnails)', 60, async () => {
     const pages = getAllPages(), allDeals = [];
     for (const page of pages) {
       page.scrollIntoView({ behavior: 'instant', block: 'center' });
