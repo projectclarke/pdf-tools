@@ -110,10 +110,8 @@
     progressBarContainer.appendChild(progressBar);
     document.body.appendChild(progressBarContainer);
 
-    // Force paint before rendering
     await new Promise(requestAnimationFrame);
 
-    // Render thumbnails with progress
     for (let i = 0; i < deals.length; i++) {
       const percent = Math.round(((i + 1) / deals.length) * 100);
       progressBar.style.width = percent + '%';
@@ -130,7 +128,6 @@
 
     progressBarContainer.remove();
 
-    // Modal
     const modal = document.createElement('div');
     Object.assign(modal.style, {
       position: 'fixed',
@@ -258,6 +255,7 @@
     document.body.appendChild(btn);
   };
 
+  // Button 1: Capture All
   createButton('📸 Capture All Deals', -30, async () => {
     const pages = getAllPages(), allDeals = [];
     for (const page of pages) {
@@ -270,6 +268,7 @@
     await runCapture(allDeals);
   }, '#007bff');
 
+  // Button 2: Select with thumbnails
   createButton('📸 Select Deals to Capture', 30, async () => {
     const pages = getAllPages(), allDeals = [];
     for (const page of pages) {
@@ -281,4 +280,103 @@
     if (!allDeals.length) return alert('No deals found.');
     await showSelector(allDeals);
   }, '#6f42c1');
+
+  // Button 3: Select without thumbnails
+  createButton('📋 Select Deals (No Thumbnails)', 90, async () => {
+    const pages = getAllPages(), allDeals = [];
+    for (const page of pages) {
+      page.scrollIntoView({ behavior: 'instant', block: 'center' });
+      await sleep(300);
+      await waitForAnnotations(page);
+      allDeals.push(...extractDealsFromPage(page));
+    }
+    if (!allDeals.length) return alert('No deals found.');
+
+    const modal = document.createElement('div');
+    Object.assign(modal.style, {
+      position: 'fixed',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      zIndex: 10000,
+      background: '#fff',
+      border: '1px solid #ccc',
+      padding: '20px',
+      width: '500px',
+      boxShadow: '0 0 10px rgba(0,0,0,0.3)',
+      maxHeight: '80vh',
+      overflowY: 'auto'
+    });
+
+    const header = document.createElement('h3');
+    header.innerText = 'Select Deals to Capture';
+    modal.appendChild(header);
+
+    const search = document.createElement('input');
+    Object.assign(search.style, {
+      width: '100%',
+      padding: '6px',
+      marginBottom: '10px',
+      boxSizing: 'border-box',
+      border: '1px solid #ccc',
+      borderRadius: '4px'
+    });
+    search.placeholder = 'Search deals by keyword...';
+    modal.appendChild(search);
+
+    const form = document.createElement('div');
+    modal.appendChild(form);
+
+    allDeals.forEach((deal, i) => {
+      const label = document.createElement('label');
+      label.style.display = 'flex';
+      label.style.alignItems = 'center';
+      label.style.marginBottom = '8px';
+      label.dataset.text = deal.text.toLowerCase();
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = i;
+      cb.style.marginRight = '8px';
+      label.appendChild(cb);
+
+      const text = document.createElement('span');
+      text.textContent = deal.text;
+      label.appendChild(text);
+
+      form.appendChild(label);
+    });
+
+    const filterDeals = () => {
+      const term = search.value.trim().toLowerCase();
+      form.querySelectorAll('label').forEach(label => {
+        label.style.display = label.dataset.text.includes(term) ? 'flex' : 'none';
+      });
+    };
+
+    search.addEventListener('input', filterDeals);
+
+    const action = document.createElement('div');
+    Object.assign(action.style, { marginTop: '10px', textAlign: 'right' });
+
+    const runBtn = document.createElement('button');
+    runBtn.textContent = '📸 Capture Selected';
+    Object.assign(runBtn.style, {
+      marginRight: '8px', background: '#28a745', color: 'white',
+      border: 'none', padding: '6px 10px', cursor: 'pointer', borderRadius: '4px'
+    });
+    runBtn.onclick = async () => {
+      const selected = Array.from(form.querySelectorAll('input:checked')).map(cb => parseInt(cb.value));
+      modal.remove();
+      await runCapture(selected.map(i => allDeals[i]));
+    };
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.onclick = () => modal.remove();
+
+    action.append(runBtn, cancelBtn);
+    modal.appendChild(action);
+    document.body.appendChild(modal);
+  }, '#17a2b8');
 })();
