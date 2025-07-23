@@ -87,7 +87,7 @@
   };
 
   const showSelector = async (deals) => {
-    // Progress bar
+    // Create progress bar container
     const progressBarContainer = document.createElement('div');
     Object.assign(progressBarContainer.style, {
       position: 'fixed',
@@ -99,6 +99,7 @@
       zIndex: '10001'
     });
 
+    // Create progress bar
     const progressBar = document.createElement('div');
     Object.assign(progressBar.style, {
       width: '0%',
@@ -110,7 +111,9 @@
     progressBarContainer.appendChild(progressBar);
     document.body.appendChild(progressBarContainer);
 
-    // Preload thumbnails with visual progress
+    // Let browser render progress bar before blocking work
+    await sleep(50);
+
     for (let i = 0; i < deals.length; i++) {
       const percent = Math.round(((i + 1) / deals.length) * 100);
       progressBar.style.width = percent + '%';
@@ -127,7 +130,6 @@
 
     progressBarContainer.remove();
 
-    // Build selector modal
     const modal = document.createElement('div');
     Object.assign(modal.style, {
       position: 'fixed',
