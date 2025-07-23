@@ -87,28 +87,34 @@
   };
 
   const showSelector = async (deals) => {
-    // Loader UI
-    const loader = document.createElement('div');
-    Object.assign(loader.style, {
+    // Progress bar
+    const progressBarContainer = document.createElement('div');
+    Object.assign(progressBarContainer.style, {
       position: 'fixed',
-      top: '20px',
-      left: '50%',
-      transform: 'translateX(-50%)',
-      background: '#333',
-      color: '#fff',
-      padding: '10px 20px',
-      fontSize: '14px',
-      fontFamily: 'Arial, sans-serif',
-      zIndex: 10001,
-      borderRadius: '6px',
-      boxShadow: '0 0 10px rgba(0,0,0,0.3)'
+      top: '0',
+      left: '0',
+      width: '100%',
+      height: '6px',
+      backgroundColor: '#ccc',
+      zIndex: '10001'
     });
-    loader.textContent = 'Preparing thumbnails...';
-    document.body.appendChild(loader);
 
-    // Prepare thumbnails
+    const progressBar = document.createElement('div');
+    Object.assign(progressBar.style, {
+      width: '0%',
+      height: '100%',
+      backgroundColor: '#28a745',
+      transition: 'width 0.2s ease-in-out'
+    });
+
+    progressBarContainer.appendChild(progressBar);
+    document.body.appendChild(progressBarContainer);
+
+    // Preload thumbnails with visual progress
     for (let i = 0; i < deals.length; i++) {
-      loader.textContent = `🖼️ Preparing thumbnails: ${i + 1} of ${deals.length}`;
+      const percent = Math.round(((i + 1) / deals.length) * 100);
+      progressBar.style.width = percent + '%';
+
       await sleep(100);
       const canvas = await html2canvas(deals[i].canvasParent, { backgroundColor: null });
       const cropped = document.createElement('canvas');
@@ -119,9 +125,9 @@
       deals[i].thumbnail = cropped.toDataURL();
     }
 
-    loader.remove();
+    progressBarContainer.remove();
 
-    // Modal UI
+    // Build selector modal
     const modal = document.createElement('div');
     Object.assign(modal.style, {
       position: 'fixed',
