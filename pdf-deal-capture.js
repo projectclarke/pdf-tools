@@ -97,9 +97,9 @@
       background: '#fff',
       border: '1px solid #ccc',
       padding: '20px',
-      width: '400px',
+      width: '500px',
       boxShadow: '0 0 10px rgba(0,0,0,0.3)',
-      maxHeight: '70vh',
+      maxHeight: '80vh',
       overflowY: 'auto'
     });
 
@@ -107,18 +107,86 @@
     header.innerText = 'Select Deals to Capture';
     modal.appendChild(header);
 
+    const search = document.createElement('input');
+    Object.assign(search.style, {
+      width: '100%',
+      padding: '6px',
+      marginBottom: '10px',
+      boxSizing: 'border-box',
+      border: '1px solid #ccc',
+      borderRadius: '4px'
+    });
+    search.placeholder = 'Search deals by keyword...';
+    modal.appendChild(search);
+
     const form = document.createElement('div');
-    deals.forEach((deal, i) => {
+    modal.appendChild(form);
+
+    const buildDealEntry = (deal, i) => {
       const label = document.createElement('label');
-      label.style.display = 'block';
+      label.style.display = 'flex';
+      label.style.alignItems = 'center';
+      label.style.marginBottom = '8px';
+      label.dataset.text = deal.text.toLowerCase();
+
       const cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.value = i;
+      cb.style.marginRight = '8px';
       label.appendChild(cb);
-      label.appendChild(document.createTextNode(` ${deal.text}`));
-      form.appendChild(label);
-    });
-    modal.appendChild(form);
+
+      const preview = document.createElement('img');
+      preview.style.width = '100px';
+      preview.style.height = 'auto';
+      preview.style.marginRight = '8px';
+      preview.style.border = '1px solid #ddd';
+      preview.style.borderRadius = '4px';
+
+      html2canvas(deal.canvasParent, { backgroundColor: null }).then(canvas => {
+        const cropped = document.createElement('canvas');
+        cropped.width = deal.crop.width;
+        cropped.height = deal.crop.height;
+        const ctx = cropped.getContext('2d');
+        ctx.drawImage(
+          canvas,
+          deal.crop.x,
+          deal.crop.y,
+          deal.crop.width,
+          deal.crop.height,
+          0,
+          0,
+          deal.crop.width,
+          deal.crop.height
+        );
+        preview.src = cropped.toDataURL();
+      });
+
+      label.appendChild(preview);
+      const text = document.createElement('span');
+      text.textContent = deal.text;
+      label.appendChild(text);
+
+      return label;
+    };
+
+    const renderDeals = () => {
+      form.innerHTML = '';
+      deals.forEach((deal, i) => {
+        const entry = buildDealEntry(deal, i);
+        form.appendChild(entry);
+      });
+    };
+
+    const filterDeals = () => {
+      const term = search.value.trim().toLowerCase();
+      const labels = form.querySelectorAll('label');
+      labels.forEach(label => {
+        const text = label.dataset.text;
+        label.style.display = text.includes(term) ? 'flex' : 'none';
+      });
+    };
+
+    search.addEventListener('input', filterDeals);
 
     const action = document.createElement('div');
     action.style.marginTop = '10px';
@@ -151,6 +219,8 @@
     action.appendChild(cancelBtn);
     modal.appendChild(action);
     document.body.appendChild(modal);
+
+    renderDeals();
   };
 
   const createButton = (text, topOffset, onclick, colour) => {
