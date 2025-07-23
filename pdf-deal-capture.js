@@ -86,7 +86,30 @@
     alert(`✅ ${deals.length} deals captured and exported.`);
   };
 
-  const showSelector = (deals) => {
+  const showSelector = async (deals) => {
+    // Generate thumbnails for all deals first
+    for (const deal of deals) {
+      await sleep(100);
+      const canvas = await html2canvas(deal.canvasParent, { backgroundColor: null });
+      const cropped = document.createElement('canvas');
+      cropped.width = deal.crop.width;
+      cropped.height = deal.crop.height;
+      const ctx = cropped.getContext('2d');
+      ctx.drawImage(
+        canvas,
+        deal.crop.x,
+        deal.crop.y,
+        deal.crop.width,
+        deal.crop.height,
+        0,
+        0,
+        deal.crop.width,
+        deal.crop.height
+      );
+      deal.thumbnail = cropped.toDataURL();
+    }
+
+    // Build modal
     const modal = document.createElement('div');
     Object.assign(modal.style, {
       position: 'fixed',
@@ -136,32 +159,14 @@
       label.appendChild(cb);
 
       const preview = document.createElement('img');
+      preview.src = deal.thumbnail;
       preview.style.width = '100px';
       preview.style.height = 'auto';
       preview.style.marginRight = '8px';
       preview.style.border = '1px solid #ddd';
       preview.style.borderRadius = '4px';
-
-      html2canvas(deal.canvasParent, { backgroundColor: null }).then(canvas => {
-        const cropped = document.createElement('canvas');
-        cropped.width = deal.crop.width;
-        cropped.height = deal.crop.height;
-        const ctx = cropped.getContext('2d');
-        ctx.drawImage(
-          canvas,
-          deal.crop.x,
-          deal.crop.y,
-          deal.crop.width,
-          deal.crop.height,
-          0,
-          0,
-          deal.crop.width,
-          deal.crop.height
-        );
-        preview.src = cropped.toDataURL();
-      });
-
       label.appendChild(preview);
+
       const text = document.createElement('span');
       text.textContent = deal.text;
       label.appendChild(text);
@@ -271,6 +276,6 @@
     }
 
     if (!allDeals.length) return alert('No deals found.');
-    showSelector(allDeals);
+    await showSelector(allDeals);
   }, '#6f42c1');
 })();
