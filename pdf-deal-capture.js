@@ -54,7 +54,7 @@
     deal.canvasParent.scrollIntoView({ behavior: 'instant', block: 'center' });
     await sleep(300);
     const dpr = window.devicePixelRatio || 1;
-    const fullCanvas = await html2canvas(deal.canvasParent, { backgroundColor: null });
+    const fullCanvas = await html2canvas(deal.canvasParent, { backgroundColor: null, scale: window.devicePixelRatio });
     const cropped = document.createElement('canvas');
     cropped.width = deal.crop.width;
     cropped.height = deal.crop.height;
@@ -128,7 +128,7 @@
         const percent = Math.round(((i + 1) / deals.length) * 100);
         progressBar.style.width = percent + '%';
         await sleep(100);
-        const canvas = await html2canvas(deals[i].canvasParent, { backgroundColor: null });
+        const canvas = await html2canvas(deals[i].canvasParent, { backgroundColor: null, scale: window.devicePixelRatio });
         const cropped = document.createElement('canvas');
         cropped.width = deals[i].crop.width;
         cropped.height = deals[i].crop.height;
