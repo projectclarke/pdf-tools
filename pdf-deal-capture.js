@@ -87,7 +87,7 @@
     link.href = img;
     link.download = `Deal-${String(index + 1).padStart(3, '0')}.png`;
     link.click();
-    return `Deal ${index + 1}:\nPage: ${deal.page}\nTitle: ${deal.text}\nLink: ${deal.href}`;
+    return `Deal ${index + 1}:\nPage: ${deal.page}\nTitle:\n${deal.text}\nLink:\n${deal.href}`;
   };
 
   const saveTextFile = (lines, filename = 'pdf_deals.txt') => {
