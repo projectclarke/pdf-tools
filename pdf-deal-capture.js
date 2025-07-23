@@ -1,42 +1,46 @@
-(async () => {
-  if (window._pdfDealCaptureActive) return;
-  window._pdfDealCaptureActive = true;
+javascript:(async () => {
+  if (window._pdfCropUI) return;
+  window._pdfCropUI = true;
 
-  const sleep = ms => new Promise(res => setTimeout(res, ms));
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-  const loadScript = src =>
-    new Promise(res => {
-      const s = document.createElement('script');
-      s.src = src;
-      s.onload = res;
-      document.body.appendChild(s);
-    });
+  const loadScript = src => new Promise(res => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = res;
+    document.body.appendChild(s);
+  });
 
   await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
 
-  const getAllPages = () => Array.from(document.querySelectorAll('.page[data-page-number]'));
-
-  const waitForAnnotations = async (page, maxWait = 3000) => {
-    const start = Date.now();
-    while (Date.now() - start < maxWait) {
-      const links = page.querySelectorAll('section.linkAnnotation a[href]');
-      if (links.length) return;
-      await sleep(100);
+  const scrollAndWaitForPage = async (pageEl) => {
+    pageEl.scrollIntoView({ behavior: 'instant', block: 'center' });
+    await sleep(300);
+    const linksReady = () =>
+      pageEl.querySelectorAll('section.linkAnnotation a[href]').length > 0;
+    let attempts = 0;
+    while (!linksReady() && attempts < 20) {
+      await sleep(200);
+      attempts++;
     }
   };
 
-  const extractDealsFromPage = (page) => {
-    const pageNum = page.getAttribute('data-page-number');
-    const pageRect = page.getBoundingClientRect();
-    const blocks = [];
+  const getAllPages = () => [...document.querySelectorAll('.page')];
 
-    page.querySelectorAll('section.linkAnnotation a[href]').forEach(a => {
-      const section = a.closest('section.linkAnnotation');
+  const extractDealsFromPage = (page) => {
+    const deals = [];
+    const pageNum = page.getAttribute('data-page-number');
+    const canvas = page.querySelector('canvas');
+    const pageRect = page.getBoundingClientRect();
+
+    page.querySelectorAll('section.linkAnnotation').forEach(section => {
+      const a = section.querySelector('a[href]');
+      if (!a) return;
       const rect = section.getBoundingClientRect();
-      blocks.push({
+      deals.push({
         page: pageNum,
         href: a.href,
-        text: a.title || a.textContent.trim() || '(no text)',
+        text: a.title || a.textContent.trim() || '',
         crop: {
           x: Math.round(rect.left - pageRect.left),
           y: Math.round(rect.top - pageRect.top),
@@ -47,24 +51,55 @@
       });
     });
 
-    return blocks;
+    return deals;
+  };
+
+  const extractAllDeals = async () => {
+    const deals = [];
+    const pages = getAllPages();
+    for (const page of pages) {
+      await scrollAndWaitForPage(page);
+      deals.push(...extractDealsFromPage(page));
+    }
+    return deals;
   };
 
   const captureDeal = async (deal, index) => {
     deal.canvasParent.scrollIntoView({ behavior: 'instant', block: 'center' });
     await sleep(300);
+
     const fullCanvas = await html2canvas(deal.canvasParent, { backgroundColor: null });
+
     const cropped = document.createElement('canvas');
     cropped.width = deal.crop.width;
     cropped.height = deal.crop.height;
     const ctx = cropped.getContext('2d');
-    ctx.drawImage(fullCanvas, deal.crop.x, deal.crop.y, deal.crop.width, deal.crop.height, 0, 0, deal.crop.width, deal.crop.height);
+    ctx.drawImage(
+      fullCanvas,
+      deal.crop.x,
+      deal.crop.y,
+      deal.crop.width,
+      deal.crop.height,
+      0,
+      0,
+      deal.crop.width,
+      deal.crop.height
+    );
+
     const img = cropped.toDataURL();
     const link = document.createElement('a');
     link.href = img;
     link.download = `Deal-${String(index + 1).padStart(3, '0')}.png`;
     link.click();
-    return `Deal ${index + 1}:\nPage: ${deal.page}\nTitle: ${deal.text}\nLink: ${deal.href}`;
+
+    // Format title from URL if missing
+    let title = deal.text && deal.text !== '(no text)' ? deal.text : '';
+    if (!title && deal.href) {
+      const path = deal.href.split('/').filter(Boolean).pop();
+      title = path.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    return `Deal ${index + 1}:\nPage: ${deal.page}\nTitle:\n${title}\nLink:\n${deal.href}`;
   };
 
   const saveTextFile = (lines, filename = 'pdf_deals.txt') => {
@@ -76,14 +111,14 @@
     URL.revokeObjectURL(a.href);
   };
 
-  const runCapture = async (deals) => {
+  const runCapture = async (selectedDeals) => {
     const output = [];
-    for (let i = 0; i < deals.length; i++) {
-      const line = await captureDeal(deals[i], i);
+    for (let i = 0; i < selectedDeals.length; i++) {
+      const line = await captureDeal(selectedDeals[i], i);
       output.push(line);
     }
     saveTextFile(output);
-    alert(`✅ ${deals.length} deals captured and exported.`);
+    alert(`✅ ${selectedDeals.length} deals captured and exported.`);
   };
 
   const showSelector = (deals) => {
@@ -115,7 +150,8 @@
       cb.type = 'checkbox';
       cb.value = i;
       label.appendChild(cb);
-      label.appendChild(document.createTextNode(` ${deal.text}`));
+      const name = deal.text || `Deal ${i + 1}`;
+      label.appendChild(document.createTextNode(` ${name}`));
       form.appendChild(label);
     });
     modal.appendChild(form);
@@ -153,7 +189,7 @@
     document.body.appendChild(modal);
   };
 
-  const createButton = (text, topOffset, onclick, colour) => {
+  const createButton = (text, topOffset, bgColor, onclick) => {
     const btn = document.createElement('button');
     btn.textContent = text;
     Object.assign(btn.style, {
@@ -163,7 +199,7 @@
       zIndex: 9999,
       padding: '10px 16px',
       fontSize: '14px',
-      backgroundColor: colour,
+      backgroundColor: bgColor,
       color: 'white',
       border: 'none',
       borderRadius: '6px',
@@ -174,33 +210,15 @@
     document.body.appendChild(btn);
   };
 
-  createButton('📸 Capture All Deals', -30, async () => {
-    const pages = getAllPages();
-    const allDeals = [];
-
-    for (const page of pages) {
-      page.scrollIntoView({ behavior: 'instant', block: 'center' });
-      await sleep(300);
-      await waitForAnnotations(page);
-      allDeals.push(...extractDealsFromPage(page));
-    }
-
+  createButton('📸 Capture All Deals', -30, '#007bff', async () => {
+    const allDeals = await extractAllDeals();
     if (!allDeals.length) return alert('No deals found.');
     await runCapture(allDeals);
-  }, '#007bff');
+  });
 
-  createButton('📸 Select Deals to Capture', 30, async () => {
-    const pages = getAllPages();
-    const allDeals = [];
-
-    for (const page of pages) {
-      page.scrollIntoView({ behavior: 'instant', block: 'center' });
-      await sleep(300);
-      await waitForAnnotations(page);
-      allDeals.push(...extractDealsFromPage(page));
-    }
-
+  createButton('📸 Select Deals to Capture', 30, '#6f42c1', async () => {
+    const allDeals = await extractAllDeals();
     if (!allDeals.length) return alert('No deals found.');
     showSelector(allDeals);
-  }, '#6f42c1');
+  });
 })();
