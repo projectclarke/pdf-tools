@@ -26,39 +26,41 @@
   };
 
   const extractDealsFromPage = (page) => {
-    const pageNum = page.getAttribute('data-page-number');
-    const pageRect = page.getBoundingClientRect();
-    const blocks = [];
+  const pageNum = page.getAttribute('data-page-number');
+  const pageRect = page.getBoundingClientRect();
+  const blocks = [];
 
-    page.querySelectorAll('section.linkAnnotation a[href]').forEach(a => {
-      const section = a.closest('section.linkAnnotation');
-      const rect = section.getBoundingClientRect();
-      blocks.push({
-        page: pageNum,
-        href: a.href,
-text: (() => {
-      const url = a.href;
-      try {
-        const path = new URL(url).pathname.split('/').filter(Boolean).pop() || '';
-        const title = path.replace(/-/g, ' ')
-                          .replace(/\b\w/g, l => l.toUpperCase());
-        return title;
-      } catch (e) {
-        return url;
-      }
-    })(),
-        crop: {
-          x: Math.round(rect.left - pageRect.left),
-          y: Math.round(rect.top - pageRect.top),
-          width: Math.round(rect.width),
-          height: Math.round(rect.height)
-        },
-        canvasParent: page
-      });
+  page.querySelectorAll('section.linkAnnotation a[href]').forEach(a => {
+    const section = a.closest('section.linkAnnotation');
+    const rect = section.getBoundingClientRect();
+
+    let formattedTitle = '';
+    try {
+      const urlObj = new URL(a.href);
+      const lastPart = urlObj.pathname.split('/').filter(Boolean).pop();
+      formattedTitle = lastPart
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase());
+    } catch (e) {
+      formattedTitle = a.href;
+    }
+
+    blocks.push({
+      page: pageNum,
+      href: a.href,
+      text: formattedTitle,
+      crop: {
+        x: Math.round(rect.left - pageRect.left),
+        y: Math.round(rect.top - pageRect.top),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height)
+      },
+      canvasParent: page
     });
+  });
 
-    return blocks;
-  };
+  return blocks;
+};
 
   const captureDeal = async (deal, index) => {
     deal.canvasParent.scrollIntoView({ behavior: 'instant', block: 'center' });
