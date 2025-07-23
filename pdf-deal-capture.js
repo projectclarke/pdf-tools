@@ -36,7 +36,17 @@
       blocks.push({
         page: pageNum,
         href: a.href,
-        text: a.title || a.textContent.trim() || '(no text)',
+text: (() => {
+      const url = a.href;
+      try {
+        const path = new URL(url).pathname.split('/').filter(Boolean).pop() || '';
+        const title = path.replace(/-/g, ' ')
+                          .replace(/\b\w/g, l => l.toUpperCase());
+        return title;
+      } catch (e) {
+        return url;
+      }
+    })(),
         crop: {
           x: Math.round(rect.left - pageRect.left),
           y: Math.round(rect.top - pageRect.top),
