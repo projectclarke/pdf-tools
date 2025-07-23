@@ -87,29 +87,41 @@
   };
 
   const showSelector = async (deals) => {
-    // Generate thumbnails for all deals first
-    for (const deal of deals) {
+    // Loader UI
+    const loader = document.createElement('div');
+    Object.assign(loader.style, {
+      position: 'fixed',
+      top: '20px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      background: '#333',
+      color: '#fff',
+      padding: '10px 20px',
+      fontSize: '14px',
+      fontFamily: 'Arial, sans-serif',
+      zIndex: 10001,
+      borderRadius: '6px',
+      boxShadow: '0 0 10px rgba(0,0,0,0.3)'
+    });
+    loader.textContent = 'Preparing thumbnails...';
+    document.body.appendChild(loader);
+
+    // Prepare thumbnails
+    for (let i = 0; i < deals.length; i++) {
+      loader.textContent = `🖼️ Preparing thumbnails: ${i + 1} of ${deals.length}`;
       await sleep(100);
-      const canvas = await html2canvas(deal.canvasParent, { backgroundColor: null });
+      const canvas = await html2canvas(deals[i].canvasParent, { backgroundColor: null });
       const cropped = document.createElement('canvas');
-      cropped.width = deal.crop.width;
-      cropped.height = deal.crop.height;
+      cropped.width = deals[i].crop.width;
+      cropped.height = deals[i].crop.height;
       const ctx = cropped.getContext('2d');
-      ctx.drawImage(
-        canvas,
-        deal.crop.x,
-        deal.crop.y,
-        deal.crop.width,
-        deal.crop.height,
-        0,
-        0,
-        deal.crop.width,
-        deal.crop.height
-      );
-      deal.thumbnail = cropped.toDataURL();
+      ctx.drawImage(canvas, deals[i].crop.x, deals[i].crop.y, deals[i].crop.width, deals[i].crop.height, 0, 0, deals[i].crop.width, deals[i].crop.height);
+      deals[i].thumbnail = cropped.toDataURL();
     }
 
-    // Build modal
+    loader.remove();
+
+    // Modal UI
     const modal = document.createElement('div');
     Object.assign(modal.style, {
       position: 'fixed',
@@ -160,11 +172,13 @@
 
       const preview = document.createElement('img');
       preview.src = deal.thumbnail;
-      preview.style.width = '100px';
-      preview.style.height = 'auto';
-      preview.style.marginRight = '8px';
-      preview.style.border = '1px solid #ddd';
-      preview.style.borderRadius = '4px';
+      Object.assign(preview.style, {
+        width: '100px',
+        height: 'auto',
+        marginRight: '8px',
+        border: '1px solid #ddd',
+        borderRadius: '4px'
+      });
       label.appendChild(preview);
 
       const text = document.createElement('span');
@@ -176,52 +190,38 @@
 
     const renderDeals = () => {
       form.innerHTML = '';
-      deals.forEach((deal, i) => {
-        const entry = buildDealEntry(deal, i);
-        form.appendChild(entry);
-      });
+      deals.forEach((deal, i) => form.appendChild(buildDealEntry(deal, i)));
     };
 
     const filterDeals = () => {
       const term = search.value.trim().toLowerCase();
-      const labels = form.querySelectorAll('label');
-      labels.forEach(label => {
-        const text = label.dataset.text;
-        label.style.display = text.includes(term) ? 'flex' : 'none';
+      form.querySelectorAll('label').forEach(label => {
+        label.style.display = label.dataset.text.includes(term) ? 'flex' : 'none';
       });
     };
 
     search.addEventListener('input', filterDeals);
 
     const action = document.createElement('div');
-    action.style.marginTop = '10px';
-    action.style.textAlign = 'right';
+    Object.assign(action.style, { marginTop: '10px', textAlign: 'right' });
 
     const runBtn = document.createElement('button');
     runBtn.textContent = '📸 Capture Selected';
     Object.assign(runBtn.style, {
-      marginRight: '8px',
-      background: '#28a745',
-      color: 'white',
-      border: 'none',
-      padding: '6px 10px',
-      cursor: 'pointer',
-      borderRadius: '4px'
+      marginRight: '8px', background: '#28a745', color: 'white',
+      border: 'none', padding: '6px 10px', cursor: 'pointer', borderRadius: '4px'
     });
-
     runBtn.onclick = async () => {
       const selected = Array.from(form.querySelectorAll('input:checked')).map(cb => parseInt(cb.value));
-      const toCapture = selected.map(i => deals[i]);
       modal.remove();
-      await runCapture(toCapture);
+      await runCapture(selected.map(i => deals[i]));
     };
 
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'Cancel';
     cancelBtn.onclick = () => modal.remove();
 
-    action.appendChild(runBtn);
-    action.appendChild(cancelBtn);
+    action.append(runBtn, cancelBtn);
     modal.appendChild(action);
     document.body.appendChild(modal);
 
@@ -250,31 +250,25 @@
   };
 
   createButton('📸 Capture All Deals', -30, async () => {
-    const pages = getAllPages();
-    const allDeals = [];
-
+    const pages = getAllPages(), allDeals = [];
     for (const page of pages) {
       page.scrollIntoView({ behavior: 'instant', block: 'center' });
       await sleep(300);
       await waitForAnnotations(page);
       allDeals.push(...extractDealsFromPage(page));
     }
-
     if (!allDeals.length) return alert('No deals found.');
     await runCapture(allDeals);
   }, '#007bff');
 
   createButton('📸 Select Deals to Capture', 30, async () => {
-    const pages = getAllPages();
-    const allDeals = [];
-
+    const pages = getAllPages(), allDeals = [];
     for (const page of pages) {
       page.scrollIntoView({ behavior: 'instant', block: 'center' });
       await sleep(300);
       await waitForAnnotations(page);
       allDeals.push(...extractDealsFromPage(page));
     }
-
     if (!allDeals.length) return alert('No deals found.');
     await showSelector(allDeals);
   }, '#6f42c1');
