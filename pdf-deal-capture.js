@@ -53,12 +53,23 @@
   const captureDeal = async (deal, index) => {
     deal.canvasParent.scrollIntoView({ behavior: 'instant', block: 'center' });
     await sleep(300);
+    const dpr = window.devicePixelRatio || 1;
     const fullCanvas = await html2canvas(deal.canvasParent, { backgroundColor: null });
     const cropped = document.createElement('canvas');
     cropped.width = deal.crop.width;
     cropped.height = deal.crop.height;
     const ctx = cropped.getContext('2d');
-    ctx.drawImage(fullCanvas, deal.crop.x, deal.crop.y, deal.crop.width, deal.crop.height, 0, 0, deal.crop.width, deal.crop.height);
+    ctx.drawImage(
+      fullCanvas,
+      deal.crop.x * dpr,
+      deal.crop.y * dpr,
+      deal.crop.width * dpr,
+      deal.crop.height * dpr,
+      0,
+      0,
+      deal.crop.width,
+      deal.crop.height
+    );
     const img = cropped.toDataURL();
     const link = document.createElement('a');
     link.href = img;
@@ -111,18 +122,28 @@
       document.body.appendChild(progressBarContainer);
 
       await new Promise(requestAnimationFrame);
+      const dpr = window.devicePixelRatio || 1;
 
       for (let i = 0; i < deals.length; i++) {
         const percent = Math.round(((i + 1) / deals.length) * 100);
         progressBar.style.width = percent + '%';
-
         await sleep(100);
         const canvas = await html2canvas(deals[i].canvasParent, { backgroundColor: null });
         const cropped = document.createElement('canvas');
         cropped.width = deals[i].crop.width;
         cropped.height = deals[i].crop.height;
         const ctx = cropped.getContext('2d');
-        ctx.drawImage(canvas, deals[i].crop.x, deals[i].crop.y, deals[i].crop.width, deals[i].crop.height, 0, 0, deals[i].crop.width, deals[i].crop.height);
+        ctx.drawImage(
+          canvas,
+          deals[i].crop.x * dpr,
+          deals[i].crop.y * dpr,
+          deals[i].crop.width * dpr,
+          deals[i].crop.height * dpr,
+          0,
+          0,
+          deals[i].crop.width,
+          deals[i].crop.height
+        );
         deals[i].thumbnail = cropped.toDataURL();
       }
 
